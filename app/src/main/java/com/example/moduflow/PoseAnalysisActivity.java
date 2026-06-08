@@ -771,11 +771,18 @@ public class PoseAnalysisActivity extends AppCompatActivity {
         long now = System.currentTimeMillis();
         Long last = lastSpokenMap.get(issue);
         if (last != null && now - last < TTS_COOLDOWN_MS) return;
-        lastSpokenMap.put(issue, now);
         String text = result.feedback != null
                 ? result.feedback.split(" \\| ")[0].trim() : "";
-        if (text.isEmpty() || text.contains("준비 자세")) return;
+        // 위치 안내 메시지는 발화 스킵 — lastSpokenMap에도 기록하지 않아 쿨다운 오염 방지
+        if (text.isEmpty() || isPositioningMessage(text)) return;
+        lastSpokenMap.put(issue, now);
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, issue);
+    }
+
+    private boolean isPositioningMessage(String text) {
+        return text.contains("준비 자세")
+                || text.contains("사람이 보이지 않")
+                || text.contains("전신이 화면");
     }
 
     private void toggleTts() {
