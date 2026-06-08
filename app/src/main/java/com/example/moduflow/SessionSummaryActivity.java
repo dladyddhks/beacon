@@ -1,7 +1,6 @@
 package com.example.moduflow;
 
 import android.content.Intent;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.View;
@@ -10,6 +9,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
@@ -88,7 +88,7 @@ public class SessionSummaryActivity extends AppCompatActivity {
         LinearLayout container = findViewById(R.id.layoutExercises);
 
         if (summary == null || summary.exercises == null || summary.exercises.isEmpty()) {
-            TextView empty = makeText("기록된 운동이 없습니다.", 15, Color.parseColor("#FF666666"));
+            TextView empty = makeText("기록된 운동이 없습니다.", 15, color(R.color.summary_empty_text));
             empty.setPadding(0, dp(24), 0, 0);
             container.addView(empty);
             return;
@@ -109,7 +109,7 @@ public class SessionSummaryActivity extends AppCompatActivity {
                                             SessionSummaryResponse.ExerciseStats stats) {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackgroundColor(Color.parseColor("#FFF5F5F5"));
+        card.setBackgroundColor(color(R.color.summary_card_background));
         card.setPadding(dp(16), dp(16), dp(16), dp(16));
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
@@ -119,7 +119,7 @@ public class SessionSummaryActivity extends AppCompatActivity {
         card.setLayoutParams(lp);
 
         // ── 운동 이름 헤더 ──
-        TextView tvTitle = makeText(exerciseName(exercise), 18, Color.BLACK);
+        TextView tvTitle = makeText(exerciseName(exercise), 18, color(R.color.summary_exercise_title));
         tvTitle.setTypeface(null, Typeface.BOLD);
         card.addView(tvTitle);
 
@@ -128,13 +128,13 @@ public class SessionSummaryActivity extends AppCompatActivity {
         if (stats.totalSets > 0) metricSb.append(stats.totalSets).append("세트  ·  ");
         metricSb.append(stats.totalReps).append("회 완료");
         if (stats.cleanReps > 0) metricSb.append("  ·  ").append(stats.cleanReps).append("회 깔끔");
-        TextView tvMetric = makeText(metricSb.toString(), 13, Color.parseColor("#FF666666"));
+        TextView tvMetric = makeText(metricSb.toString(), 13, color(R.color.summary_metric_text));
         tvMetric.setPadding(0, dp(4), 0, dp(10));
         card.addView(tvMetric);
 
         // ── 자세 분석 요약 (assessment) ──
         if (stats.assessment != null && !stats.assessment.isEmpty()) {
-            TextView tvAss = makeText(stats.assessment, 15, Color.parseColor("#FF333333"));
+            TextView tvAss = makeText(stats.assessment, 15, color(R.color.summary_assessment_text));
             tvAss.setPadding(0, 0, 0, dp(10));
             card.addView(tvAss);
         }
@@ -142,7 +142,7 @@ public class SessionSummaryActivity extends AppCompatActivity {
         // ── 교정 사항 목록 ──
         if (stats.issuesDetail != null) {
             if (stats.issuesDetail.isEmpty()) {
-                card.addView(makeText("자세가 안정적이었어요!", 14, Color.parseColor("#FF2E7D32")));
+                card.addView(makeText("자세가 안정적이었어요!", 14, color(R.color.summary_positive_text)));
             } else {
                 addIssuesDetail(card, stats.issuesDetail);
             }
@@ -156,7 +156,7 @@ public class SessionSummaryActivity extends AppCompatActivity {
     /** issuesDetail 기반 코칭 목록 (message + tip, 상위 3개 + 더 보기) */
     private void addIssuesDetail(LinearLayout parent,
                                   List<SessionSummaryResponse.IssueDetail> details) {
-        TextView tvHeader = makeText("주요 교정 사항", 13, Color.parseColor("#FF666666"));
+        TextView tvHeader = makeText("주요 교정 사항", 13, color(R.color.summary_section_header));
         tvHeader.setPadding(0, 0, 0, dp(6));
         parent.addView(tvHeader);
 
@@ -173,7 +173,7 @@ public class SessionSummaryActivity extends AppCompatActivity {
                 extraLayout.addView(buildIssueRow(details.get(i)));
             }
 
-            TextView tvMore = makeText("더 보기 ▼", 13, Color.parseColor("#FF1976D2"));
+            TextView tvMore = makeText("더 보기 ▼", 13, color(R.color.summary_more_link));
             tvMore.setPadding(0, dp(6), 0, 0);
             tvMore.setOnClickListener(v -> {
                 if (extraLayout.getVisibility() == View.GONE) {
@@ -201,10 +201,10 @@ public class SessionSummaryActivity extends AppCompatActivity {
 
         row.addView(makeText(
                 "•  " + detail.message + "  (" + detail.count + "회)",
-                14, Color.parseColor("#FFC62828")));
+                14, color(R.color.summary_issue_text)));
 
         if (detail.tip != null && !detail.tip.isEmpty()) {
-            TextView tvTip = makeText(detail.tip, 12, Color.parseColor("#FF666666"));
+            TextView tvTip = makeText(detail.tip, 12, color(R.color.summary_tip_text));
             tvTip.setPadding(dp(12), dp(2), 0, 0);
             row.addView(tvTip);
         }
@@ -215,11 +215,11 @@ public class SessionSummaryActivity extends AppCompatActivity {
     private void addLegacyIssueCounts(LinearLayout parent, Map<String, Integer> issueCounts) {
         if (issueCounts == null || issueCounts.isEmpty()) {
             parent.addView(makeText("교정 사항 없음 — 훌륭합니다!", 14,
-                    Color.parseColor("#FF2E7D32")));
+                    color(R.color.summary_positive_text)));
             return;
         }
 
-        TextView tvHeader = makeText("주요 교정 사항", 13, Color.parseColor("#FF666666"));
+        TextView tvHeader = makeText("주요 교정 사항", 13, color(R.color.summary_section_header));
         tvHeader.setPadding(0, 0, 0, dp(4));
         parent.addView(tvHeader);
 
@@ -231,13 +231,17 @@ public class SessionSummaryActivity extends AppCompatActivity {
             Map.Entry<String, Integer> e = sorted.get(i);
             TextView tv = makeText(
                     "•  " + issueName(e.getKey()) + "  (" + e.getValue() + "회)",
-                    14, Color.parseColor("#FFC62828"));
+                    14, color(R.color.summary_issue_text));
             tv.setPadding(0, dp(2), 0, 0);
             parent.addView(tv);
         }
     }
 
     // ───────────────────────── 헬퍼 ─────────────────────────────────────
+
+    private int color(int resId) {
+        return ContextCompat.getColor(this, resId);
+    }
 
     private TextView makeText(String text, float sizeSp, int color) {
         TextView tv = new TextView(this);

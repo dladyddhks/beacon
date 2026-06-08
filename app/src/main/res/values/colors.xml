@@ -2,4 +2,22 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- 운동 전체 요약 화면 — 라이트 모드 -->
+    <color name="summary_background">#FFFFFFFF</color>
+    <color name="summary_header_background">#FFFFFFFF</color>
+    <color name="summary_card_background">#FFF5F5F5</color>
+    <color name="summary_title_text">#FF000000</color>
+    <color name="summary_subtitle_text">#FF666666</color>
+    <color name="summary_ai_bg">#FFE8F5E9</color>
+    <color name="summary_ai_text">#FF2E7D32</color>
+    <color name="summary_exercise_title">#FF000000</color>
+    <color name="summary_metric_text">#FF666666</color>
+    <color name="summary_assessment_text">#FF333333</color>
+    <color name="summary_positive_text">#FF2E7D32</color>
+    <color name="summary_section_header">#FF666666</color>
+    <color name="summary_issue_text">#FFC62828</color>
+    <color name="summary_tip_text">#FF666666</color>
+    <color name="summary_more_link">#FF1976D2</color>
+    <color name="summary_empty_text">#FF666666</color>
 </resources>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 운동 전체 요약 화면 — 다크 모드 -->
+    <color name="summary_background">#FF121212</color>
+    <color name="summary_header_background">#FF1E1E1E</color>
+    <color name="summary_card_background">#FF1E1E1E</color>
+    <color name="summary_title_text">#FFFFFFFF</color>
+    <color name="summary_subtitle_text">#FF888888</color>
+    <color name="summary_ai_bg">#FF1A2A1A</color>
+    <color name="summary_ai_text">#FF88DD88</color>
+    <color name="summary_exercise_title">#FFFFFFFF</color>
+    <color name="summary_metric_text">#FF888888</color>
+    <color name="summary_assessment_text">#FFDDDDDD</color>
+    <color name="summary_positive_text">#FF44CC44</color>
+    <color name="summary_section_header">#FF888888</color>
+    <color name="summary_issue_text">#FFFF9999</color>
+    <color name="summary_tip_text">#FF888888</color>
+    <color name="summary_more_link">#FF64B5F6</color>
+    <color name="summary_empty_text">#FF888888</color>
+</resources>
