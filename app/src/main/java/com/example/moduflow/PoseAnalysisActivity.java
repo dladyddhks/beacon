@@ -316,9 +316,15 @@ public class PoseAnalysisActivity extends AppCompatActivity {
                                     @Nullable Map<String, String> nameMap,
                                     @Nullable String initialHint) {
         Map<String, String> fallbackLabels = new HashMap<>();
-        fallbackLabels.put("squat",  "스쿼트");
-        fallbackLabels.put("pushup", "푸쉬업");
-        fallbackLabels.put("lunge",  "런지");
+        fallbackLabels.put("squat",         "스쿼트");
+        fallbackLabels.put("pushup",        "푸쉬업");
+        fallbackLabels.put("lunge",         "런지");
+        fallbackLabels.put("pullup",        "풀업");
+        fallbackLabels.put("situp",         "싯업");
+        fallbackLabels.put("lateralraise",  "레터럴 레이즈");
+        fallbackLabels.put("shoulderpress", "숄더 프레스");
+        fallbackLabels.put("bench-press",   "벤치프레스");
+        fallbackLabels.put("biceps-curl",   "바이셉 컬");
 
         // 힌트와 매칭되는 키 탐색
         // 1순위: 키 자체가 힌트와 일치 (exerciseId가 키인 경우)
@@ -389,13 +395,14 @@ public class PoseAnalysisActivity extends AppCompatActivity {
             targetSets = (routine.sets != null && routine.sets > 0) ? routine.sets : 0;
             targetReps = (routine.reps != null && routine.reps > 0) ? routine.reps : 0;
             // AI 서버에는 exerciseId를 사용. 없으면 key를 그대로 사용(AI 미지원 가능)
-            currentAiExercise = (routine.exerciseId != null && !routine.exerciseId.isEmpty())
-                    ? routine.exerciseId : key;
+            currentAiExercise = normalizeExerciseId(
+                    (routine.exerciseId != null && !routine.exerciseId.isEmpty())
+                    ? routine.exerciseId : key);
         } else {
             // presetExercises 경로: key 자체가 exerciseId
             targetSets        = 0;
             targetReps        = 0;
-            currentAiExercise = key;
+            currentAiExercise = normalizeExerciseId(key);
         }
 
         Log.d(TAG, "selectExercise: key=" + key + ", aiId=" + currentAiExercise
@@ -777,6 +784,16 @@ public class PoseAnalysisActivity extends AppCompatActivity {
         if (text.isEmpty() || isPositioningMessage(text)) return;
         lastSpokenMap.put(issue, now);
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, issue);
+    }
+
+    /** AI 서버 운동 식별자를 현행 규격(소문자 붙여쓰기)으로 정규화한다. */
+    private String normalizeExerciseId(String id) {
+        if (id == null) return null;
+        switch (id) {
+            case "lateral_raise":  return "lateralraise";
+            case "shoulder_press": return "shoulderpress";
+            default:               return id;
+        }
     }
 
     private boolean isPositioningMessage(String text) {

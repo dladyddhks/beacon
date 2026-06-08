@@ -275,7 +275,9 @@ public class SessionSummaryActivity extends AppCompatActivity {
             case "bench-press":     return "벤치프레스";
             case "plank":           return "플랭크";
             case "biceps-curl":     return "바이셉 컬";
+            case "lateralraise":
             case "lateral_raise":   return "레터럴 레이즈";
+            case "shoulderpress":
             case "shoulder_press":  return "숄더 프레스";
             case "pullup":          return "풀업";
             case "situp":           return "싯업";
