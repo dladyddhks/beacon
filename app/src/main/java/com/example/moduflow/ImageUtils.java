@@ -1,4 +1,4 @@
-﻿package com.example.moduflow;
+package com.example.moduflow;
 
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
@@ -50,15 +50,22 @@ public class ImageUtils {
         return Base64.encodeToString(imageBytes, Base64.NO_WRAP);
     }
 
+    /**
+     * CameraX ImageProxy(YUV_420_888)를 Bitmap으로 변환한다.
+     *
+     * CameraX가 제공하는 포맷은 YUV_420_888이지만 Android의 YuvImage는
+     * NV21(Y평면 + VU 인터리브)만 지원한다. 따라서 plane 순서를 Y→V→U로
+     * 재배열하여 NV21 바이트 배열을 만든 뒤 YuvImage로 JPEG 변환한다.
+     */
     @SuppressLint("UnsafeOptInUsageError")
     private static Bitmap imageProxyToBitmap(ImageProxy imageProxy) {
         Image image = imageProxy.getImage();
         if (image == null) return null;
 
         ImageProxy.PlaneProxy[] planes = imageProxy.getPlanes();
-        ByteBuffer yBuffer = planes[0].getBuffer();
-        ByteBuffer uBuffer = planes[1].getBuffer();
-        ByteBuffer vBuffer = planes[2].getBuffer();
+        ByteBuffer yBuffer = planes[0].getBuffer(); // Y 평면
+        ByteBuffer uBuffer = planes[1].getBuffer(); // U 평면 (Cb)
+        ByteBuffer vBuffer = planes[2].getBuffer(); // V 평면 (Cr)
 
         int ySize = yBuffer.remaining();
         int uSize = uBuffer.remaining();

@@ -1,4 +1,4 @@
-﻿package com.example.moduflow;
+package com.example.moduflow;
 
 /**
  * BLE 비콘 거리 평활화를 위한 1차원 칼만 필터.

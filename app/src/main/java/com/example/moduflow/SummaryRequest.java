@@ -1,6 +1,6 @@
-﻿package com.example.moduflow;
+package com.example.moduflow;
 
-// WebSocket 클라이언트 → 서버: 세션 요약 요청
+// WebSocket 클라이언트 → 서버: 세션 종료 및 전체 요약 요청
 public class SummaryRequest {
-    public final String type = "summary";
+    public final String type = "session_end";
 }

@@ -1,4 +1,4 @@
-﻿package com.example.moduflow;
+package com.example.moduflow;
 
 // WebSocket 클라이언트 → 서버: 프레임 전송
 public class FrameRequest {

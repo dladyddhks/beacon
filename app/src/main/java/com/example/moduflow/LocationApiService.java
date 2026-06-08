@@ -1,12 +1,16 @@
-﻿package com.example.moduflow;
+package com.example.moduflow;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.POST;
 
-// 비콘 구역 정보 전송 — 인증 필요 (AuthInterceptor가 자동으로 Bearer 헤더 주입)
+/**
+ * Spring 서버의 위치 업데이트 API.
+ * ApiClient를 통해 인스턴스를 얻는다.
+ */
 public interface LocationApiService {
 
-    @POST("/api/update-location")
+    /** 비콘 감지 결과(구역 ID)를 서버에 전송한다. 응답 바디는 없다. */
+    @POST("/api/v1/update-location")
     Call<Void> updateLocation(@Body LocationData data);
 }

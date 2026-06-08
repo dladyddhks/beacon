@@ -24,7 +24,7 @@
         android:theme="@style/Theme.Moduflow">
         
         <activity
-            android:name=".MainActivity"
+            android:name=".PwaActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -47,10 +47,6 @@
                     android:pathPrefix="/workout/run" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".PwaActivity"
-            android:exported="false" />
 
         <activity
             android:name=".SessionSummaryActivity"

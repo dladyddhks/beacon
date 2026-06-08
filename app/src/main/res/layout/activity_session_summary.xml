@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#FF121212"
@@ -20,7 +21,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="운동 세션 요약"
+            android:text="운동 전체 요약"
             android:textColor="@android:color/white"
             android:textSize="22sp"
             android:textStyle="bold" />
@@ -32,7 +33,23 @@
             android:layout_marginTop="4dp"
             android:textColor="#FF888888"
             android:textSize="13sp" />
+
     </LinearLayout>
+
+    <!-- AI 총평 헤드라인 (aiSummary 있으면 표시, 없으면 GONE) -->
+    <TextView
+        android:id="@+id/tvAiHeadline"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#FF1A2A1A"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
+        android:textColor="#FF88DD88"
+        android:textSize="15sp"
+        android:lineSpacingMultiplier="1.4"
+        android:visibility="gone" />
 
     <!-- 운동별 카드 목록 -->
     <ScrollView
@@ -52,7 +69,7 @@
             android:paddingEnd="16dp" />
     </ScrollView>
 
-    <!-- 확인 버튼 -->
+    <!-- 확인 버튼 (네비게이션 바 위로 inset 처리) -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnClose"
         android:layout_width="match_parent"

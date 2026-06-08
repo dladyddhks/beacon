@@ -18,7 +18,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- 상단 오버레이: 연결 상태 + 운동 선택기 -->
+    <!-- 상단 오버레이: 연결 상태 + 운동 선택기 + 세트 정보 -->
     <LinearLayout
         android:id="@+id/layoutTop"
         android:layout_width="0dp"
@@ -36,21 +36,94 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <TextView
-            android:id="@+id/tvStatus"
-            android:layout_width="wrap_content"
+        <!-- 연결 상태 + 카메라 토글 -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="● 서버 연결 중..."
-            android:textColor="#FFAAAAAA"
-            android:textSize="13sp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-        <com.google.android.material.chip.ChipGroup
-            android:id="@+id/chipGroupExercise"
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="● 서버 연결 중..."
+                android:textColor="#FFAAAAAA"
+                android:textSize="13sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCameraToggle"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="0dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="📷 끄기"
+                android:textColor="#FFAAAAAA"
+                android:textSize="14sp"
+                app:strokeColor="#FF666666" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvRoutineLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            app:singleSelection="true"
-            app:selectionRequired="true" />
+            android:text="오늘의 루틴"
+            android:textColor="#FFBBBBBB"
+            android:textSize="12sp" />
+
+        <!-- 한 줄 가로 스크롤 칩 목록 -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:scrollbars="none"
+            android:fadingEdge="horizontal"
+            android:requiresFadingEdge="horizontal"
+            android:fadingEdgeLength="24dp">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupExercise"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:chipSpacingHorizontal="4dp"
+                app:singleLine="true"
+                app:singleSelection="true"
+                app:selectionRequired="true" />
+        </HorizontalScrollView>
+
+        <!-- 세트 / 목표 횟수 정보 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tvSetInfo"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="—"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvWeight"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="#FFAAAAAA"
+                android:textSize="13sp" />
+        </LinearLayout>
+
     </LinearLayout>
 
     <!-- 좌측 중앙: Rep 카운트 + Stage + 초기화 버튼 -->
@@ -111,7 +184,7 @@
             android:textSize="11sp" />
     </LinearLayout>
 
-    <!-- 하단 오버레이: 자세 인디케이터 + 피드백 + 지표 + 종료 버튼 -->
+    <!-- 하단 오버레이: 자세 인디케이터 + 피드백 + 지표 + 버튼 -->
     <LinearLayout
         android:id="@+id/layoutBottom"
         android:layout_width="0dp"
@@ -151,34 +224,218 @@
             android:id="@+id/tvAngles"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:gravity="center"
-            android:textColor="#FFBBBBBB"
-            android:textSize="12sp"
-            tools:text="left_knee: 90.0°  right_knee: 88.5°" />
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/tvMetrics"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Latency: — ms | FPS: —"
-            android:textColor="#FF666666"
-            android:textSize="11sp" />
+            android:visibility="gone" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnFinish"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        <!-- 버튼 행: 세트 종료 + 운동 종료 -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="운동 종료 및 요약 보기"
-            android:textColor="@android:color/white"
-            app:strokeColor="@android:color/white" />
+            android:orientation="horizontal"
+            android:weightSum="2">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEndSet"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:text="세트 종료"
+                android:textColor="#FFCCCCCC"
+                app:strokeColor="#FF888888" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnFinish"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="운동 종료"
+                android:textColor="@android:color/white"
+                app:strokeColor="@android:color/white" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 휴식 타이머 오버레이 (세트 완료 후 표시) -->
+    <LinearLayout
+        android:id="@+id/layoutRest"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#DD000000"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/tvRestTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🏋️ 휴식 중"
+            android:textColor="#FFFFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvRestTimer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="60"
+            android:textColor="#FF44CCFF"
+            android:textSize="96sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="초 후 다음 세트 시작"
+            android:textColor="#FFAAAAAA"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/tvRestSetInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text=""
+            android:textColor="#FFCCCCCC"
+            android:textSize="15sp" />
+
+        <!-- 세트 종료 피드백 (set_feedback 수신 후 표시) -->
+        <LinearLayout
+            android:id="@+id/layoutSetFeedback"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:background="#33FFFFFF"
+            android:orientation="vertical"
+            android:padding="14dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tvSetFeedbackAssessment"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textColor="#FFDDDDDD"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tvSetFeedbackIssues"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:textColor="#FFFF9999"
+                android:textSize="13sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSkipRest"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:paddingStart="32dp"
+            android:paddingEnd="32dp"
+            android:text="바로 시작하기 ▶"
+            android:textColor="#FF44CCFF"
+            app:strokeColor="#FF44CCFF" />
+    </LinearLayout>
+
+    <!-- 전체 운동 완료 오버레이 -->
+    <LinearLayout
+        android:id="@+id/layoutAllDone"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#DD000000"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🎉 수고하셨습니다!"
+            android:textColor="#FFFFFFFF"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="모든 운동이 종료되었습니다."
+            android:textColor="#FFAAAAAA"
+            android:textSize="16sp" />
+
+        <!-- 마지막 세트 요약 -->
+        <LinearLayout
+            android:id="@+id/layoutAllDoneFeedback"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:background="#33FFFFFF"
+            android:orientation="vertical"
+            android:padding="14dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tvAllDoneAssessment"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textColor="#FFDDDDDD"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tvAllDoneIssues"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:textColor="#FFFF9999"
+                android:textSize="13sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnViewResult"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:paddingStart="40dp"
+            android:paddingEnd="40dp"
+            android:text="결과 보기"
+            android:textColor="#FF44CCFF"
+            app:strokeColor="#FF44CCFF" />
+
     </LinearLayout>
 
     <!-- 로딩 오버레이: 콜드스타트 / 첫 연결 중 -->
-
     <LinearLayout
         android:id="@+id/layoutLoading"
         android:layout_width="0dp"

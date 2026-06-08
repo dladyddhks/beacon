@@ -1,4 +1,4 @@
-﻿package com.example.moduflow;
+package com.example.moduflow;
 
 // AI 서버에 보낼 프레임 데이터 모델
 public class PoseRequest {

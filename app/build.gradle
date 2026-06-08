@@ -23,7 +23,7 @@ android {
 
         buildConfigField "String", "AI_SERVER_HOST", '"moduflow-ai-489316272296.asia-northeast3.run.app"'
         buildConfigField "int",    "AI_SERVER_PORT", "443"
-        buildConfigField "String", "API_SERVER_URL",  '"http://3.39.194.42:8080/"'
+        buildConfigField "String", "API_SERVER_URL",  '"https://3-39-194-42.sslip.io/"'
         buildConfigField "String", "PWA_URL",         '"https://modu-flow-frontend.vercel.app"'
     }
 
@@ -60,6 +60,7 @@ dependencies {
 
     // Networking & JSON
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.11.0'
     implementation 'com.google.code.gson:gson:2.10.1'
 
     // UI

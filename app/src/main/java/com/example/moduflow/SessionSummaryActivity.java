@@ -1,13 +1,16 @@
-﻿package com.example.moduflow;
+package com.example.moduflow;
 
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.google.gson.Gson;
 
@@ -19,16 +22,29 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * 운동 종료 후 세션 전체 요약을 표시하는 화면.
+ */
 public class SessionSummaryActivity extends AppCompatActivity {
 
     public static final String EXTRA_SUMMARY_JSON = "summary_json";
 
-    private static final int ISSUES_PREVIEW = 3;  // 접힌 상태에서 보여줄 항목 수
+    private static final int ISSUES_PREVIEW = 3;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_session_summary);
+
+        // 확인 버튼이 네비게이션 바에 가리지 않도록 bottom inset 적용
+        View btnClose = findViewById(R.id.btnClose);
+        ViewCompat.setOnApplyWindowInsetsListener(btnClose, (v, insets) -> {
+            int navBar = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+            ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+            lp.setMargins(dp(16), 0, dp(16), dp(16) + navBar);
+            v.setLayoutParams(lp);
+            return insets;
+        });
 
         String json = getIntent().getStringExtra(EXTRA_SUMMARY_JSON);
         SessionSummaryResponse.SummaryData summary =
@@ -36,15 +52,27 @@ public class SessionSummaryActivity extends AppCompatActivity {
 
         bindSummary(summary);
 
-        findViewById(R.id.btnClose).setOnClickListener(v -> finish());
+        btnClose.setOnClickListener(v -> finish());
     }
 
     // ───────────────────────── 요약 화면 구성 ───────────────────────────
 
     private void bindSummary(SessionSummaryResponse.SummaryData summary) {
+        // 시작 시간 (연도 제외)
         TextView tvTime = findViewById(R.id.tvSessionTime);
-        if (summary != null && summary.start_time != null) {
-            tvTime.setText("시작: " + formatIso(summary.start_time));
+        if (summary != null && summary.startTime != null) {
+            tvTime.setText("시작: " + formatIso(summary.startTime));
+        }
+
+        // AI 총평 헤드라인: aiSummary 있으면 그걸, 없으면 assessment
+        TextView tvAiHeadline = findViewById(R.id.tvAiHeadline);
+        if (summary != null) {
+            String headline = (summary.aiSummary != null && !summary.aiSummary.isEmpty())
+                    ? summary.aiSummary : summary.assessment;
+            if (headline != null && !headline.isEmpty()) {
+                tvAiHeadline.setText(headline);
+                tvAiHeadline.setVisibility(View.VISIBLE);
+            }
         }
 
         LinearLayout container = findViewById(R.id.layoutExercises);
@@ -56,13 +84,13 @@ public class SessionSummaryActivity extends AppCompatActivity {
             return;
         }
 
-        // count 내림차순 정렬
+        // totalReps 내림차순 정렬
         List<Map.Entry<String, SessionSummaryResponse.ExerciseStats>> entries =
                 new ArrayList<>(summary.exercises.entrySet());
-        entries.sort((a, b) -> b.getValue().count - a.getValue().count);
+        entries.sort((a, b) -> b.getValue().totalReps - a.getValue().totalReps);
 
         for (Map.Entry<String, SessionSummaryResponse.ExerciseStats> entry : entries) {
-            if (entry.getValue().count == 0) continue;
+            if (entry.getValue().totalReps == 0) continue;
             container.addView(buildExerciseCard(entry.getKey(), entry.getValue()));
         }
     }
@@ -85,39 +113,37 @@ public class SessionSummaryActivity extends AppCompatActivity {
         tvTitle.setTypeface(null, Typeface.BOLD);
         card.addView(tvTitle);
 
-        // ── count / clean_reps 지표 ──
-        String metric = stats.count + "회 완료";
-        if (stats.clean_reps > 0) {
-            metric += "  ·  " + stats.clean_reps + "회 깔끔";
-        }
-        TextView tvMetric = makeText(metric, 13, Color.parseColor("#FF888888"));
-        tvMetric.setPadding(0, dp(2), 0, dp(10));
+        // ── 세트 · 횟수 · 깔끔 지표 ──
+        StringBuilder metricSb = new StringBuilder();
+        if (stats.totalSets > 0) metricSb.append(stats.totalSets).append("세트  ·  ");
+        metricSb.append(stats.totalReps).append("회 완료");
+        if (stats.cleanReps > 0) metricSb.append("  ·  ").append(stats.cleanReps).append("회 깔끔");
+        TextView tvMetric = makeText(metricSb.toString(), 13, Color.parseColor("#FF888888"));
+        tvMetric.setPadding(0, dp(4), 0, dp(10));
         card.addView(tvMetric);
 
-        // ── assessment 한 줄 평가 ──
+        // ── 자세 분석 요약 (assessment) ──
         if (stats.assessment != null && !stats.assessment.isEmpty()) {
-            TextView tvAssessment = makeText(stats.assessment, 15, Color.parseColor("#FFDDDDDD"));
-            tvAssessment.setPadding(0, 0, 0, dp(10));
-            card.addView(tvAssessment);
+            TextView tvAss = makeText(stats.assessment, 15, Color.parseColor("#FFDDDDDD"));
+            tvAss.setPadding(0, 0, 0, dp(10));
+            card.addView(tvAss);
         }
 
-        // ── issues_detail 목록 (신규 서버 포맷) ──
-        if (stats.issues_detail != null) {
-            if (stats.issues_detail.isEmpty()) {
-                TextView tvOk = makeText("자세가 안정적이었어요!", 14, Color.parseColor("#FF44CC44"));
-                card.addView(tvOk);
+        // ── 교정 사항 목록 ──
+        if (stats.issuesDetail != null) {
+            if (stats.issuesDetail.isEmpty()) {
+                card.addView(makeText("자세가 안정적이었어요!", 14, Color.parseColor("#FF44CC44")));
             } else {
-                addIssuesDetail(card, stats.issues_detail);
+                addIssuesDetail(card, stats.issuesDetail);
             }
         } else {
-            // ── 하위 호환: issues_detail 없으면 issue_counts 사용 ──
-            addLegacyIssueCounts(card, stats.issue_counts);
+            addLegacyIssueCounts(card, stats.issueCounts);
         }
 
         return card;
     }
 
-    /** issues_detail 기반 코칭 목록 (message + tip, 상위 3개 + 더 보기) */
+    /** issuesDetail 기반 코칭 목록 (message + tip, 상위 3개 + 더 보기) */
     private void addIssuesDetail(LinearLayout parent,
                                   List<SessionSummaryResponse.IssueDetail> details) {
         TextView tvHeader = makeText("주요 교정 사항", 13, Color.parseColor("#FF888888"));
@@ -125,18 +151,14 @@ public class SessionSummaryActivity extends AppCompatActivity {
         parent.addView(tvHeader);
 
         int visible = Math.min(ISSUES_PREVIEW, details.size());
-
-        // 항상 보이는 상위 ISSUES_PREVIEW개
         for (int i = 0; i < visible; i++) {
             parent.addView(buildIssueRow(details.get(i)));
         }
 
-        // 나머지 항목 — 접힌 상태로 추가
         if (details.size() > ISSUES_PREVIEW) {
             LinearLayout extraLayout = new LinearLayout(this);
             extraLayout.setOrientation(LinearLayout.VERTICAL);
             extraLayout.setVisibility(View.GONE);
-
             for (int i = ISSUES_PREVIEW; i < details.size(); i++) {
                 extraLayout.addView(buildIssueRow(details.get(i)));
             }
@@ -158,7 +180,6 @@ public class SessionSummaryActivity extends AppCompatActivity {
         }
     }
 
-    /** 이슈 한 항목 (message 줄 + tip 줄) */
     private LinearLayout buildIssueRow(SessionSummaryResponse.IssueDetail detail) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.VERTICAL);
@@ -168,13 +189,10 @@ public class SessionSummaryActivity extends AppCompatActivity {
         rp.setMargins(0, dp(6), 0, 0);
         row.setLayoutParams(rp);
 
-        // "• {message} ({count}회)"
-        TextView tvMsg = makeText(
+        row.addView(makeText(
                 "•  " + detail.message + "  (" + detail.count + "회)",
-                14, Color.parseColor("#FFFF9999"));
-        row.addView(tvMsg);
+                14, Color.parseColor("#FFFF9999")));
 
-        // tip (작은 회색)
         if (detail.tip != null && !detail.tip.isEmpty()) {
             TextView tvTip = makeText(detail.tip, 12, Color.parseColor("#FF888888"));
             tvTip.setPadding(dp(12), dp(2), 0, 0);
@@ -184,13 +202,10 @@ public class SessionSummaryActivity extends AppCompatActivity {
         return row;
     }
 
-    /** 하위 호환: issue_counts 맵으로 상위 3개 표시 */
-    private void addLegacyIssueCounts(LinearLayout parent,
-                                       Map<String, Integer> issueCounts) {
+    private void addLegacyIssueCounts(LinearLayout parent, Map<String, Integer> issueCounts) {
         if (issueCounts == null || issueCounts.isEmpty()) {
-            TextView tvOk = makeText("교정 사항 없음 — 훌륭합니다!", 14,
-                    Color.parseColor("#FF44CC44"));
-            parent.addView(tvOk);
+            parent.addView(makeText("교정 사항 없음 — 훌륭합니다!", 14,
+                    Color.parseColor("#FF44CC44")));
             return;
         }
 
@@ -226,11 +241,11 @@ public class SessionSummaryActivity extends AppCompatActivity {
         return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
-    /** ISO 8601 → "YYYY-MM-DD HH:mm" */
+    /** ISO 8601 → "MM월 DD일 HH:mm" (연도 제외) */
     private String formatIso(String iso) {
         try {
             SimpleDateFormat in  = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-            SimpleDateFormat out = new SimpleDateFormat("yyyy-MM-dd HH:mm",       Locale.getDefault());
+            SimpleDateFormat out = new SimpleDateFormat("MM월 dd일 HH:mm",        Locale.getDefault());
             Date date = in.parse(iso);
             return date != null ? out.format(date) : iso;
         } catch (ParseException e) {
@@ -240,10 +255,17 @@ public class SessionSummaryActivity extends AppCompatActivity {
 
     private String exerciseName(String key) {
         switch (key) {
-            case "squat":  return "스쿼트";
-            case "pushup": return "푸쉬업";
-            case "lunge":  return "런지";
-            default:       return key;
+            case "squat":           return "스쿼트";
+            case "pushup":          return "푸쉬업";
+            case "lunge":           return "런지";
+            case "bench-press":     return "벤치프레스";
+            case "plank":           return "플랭크";
+            case "biceps-curl":     return "바이셉 컬";
+            case "lateral_raise":   return "레터럴 레이즈";
+            case "shoulder_press":  return "숄더 프레스";
+            case "pullup":          return "풀업";
+            case "situp":           return "싯업";
+            default:                return key;
         }
     }
 
