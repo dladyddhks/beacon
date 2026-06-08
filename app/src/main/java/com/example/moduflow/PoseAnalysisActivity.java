@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -73,17 +74,19 @@ public class PoseAnalysisActivity extends AppCompatActivity {
 
     private static final String TAG                   = "PoseAnalysis";
     private static final int    PERMISSION_CAMERA     = 1001;
-    private static final long   MIN_FRAME_INTERVAL_MS = 100; // 최대 10fps
-    private static final int    REST_SECONDS          = 60;  // 세트 간 휴식 시간
+    private static final long   MIN_FRAME_INTERVAL_MS = 100;  // 최대 10fps
+    private static final int    REST_SECONDS          = 60;   // 세트 간 휴식 시간
+    private static final long   TTS_COOLDOWN_MS       = 3000; // 같은 이슈 재발화 금지 간격
 
     // ── 뷰 ──────────────────────────────────────────────────────────────
     private PreviewView  previewView;
     private TextView     tvStatus, tvFeedback,
-                         tvCount, tvStage, tvRoutineLabel,
+                         tvCount, tvRoutineLabel,
                          tvSetInfo, tvWeight,
                          tvRestTimer, tvRestSetInfo,
                          tvSetFeedbackAssessment, tvSetFeedbackIssues,
                          tvAllDoneAssessment, tvAllDoneIssues;
+    private com.google.android.material.button.MaterialButton btnFinish, btnViewResult;
     private View         viewPostureIndicator;
     private LinearLayout layoutLoading, layoutRest, layoutSetFeedback,
                          layoutAllDone, layoutAllDoneFeedback;
@@ -131,6 +134,11 @@ public class PoseAnalysisActivity extends AppCompatActivity {
 
     private CountDownTimer restTimer = null;
 
+    // ── TTS ──────────────────────────────────────────────────────────────
+    private TextToSpeech              tts;
+    private boolean                   ttsEnabled    = true;
+    private final Map<String, Long>   lastSpokenMap = new HashMap<>();
+
     // ────────────────────────────────────────────────────────────────────
 
     @Override
@@ -142,6 +150,7 @@ public class PoseAnalysisActivity extends AppCompatActivity {
         setupButtons();
         fetchRoutinesAndSetupChips();
         setupWebSocket();
+        setupTts();
         logDeepLinkSource();
 
         if (cameraPermissionGranted()) {
@@ -171,7 +180,6 @@ public class PoseAnalysisActivity extends AppCompatActivity {
         tvRoutineLabel       = findViewById(R.id.tvRoutineLabel);
         tvFeedback           = findViewById(R.id.tvFeedback);
         tvCount              = findViewById(R.id.tvCount);
-        tvStage              = findViewById(R.id.tvStage);
         tvSetInfo            = findViewById(R.id.tvSetInfo);
         tvWeight             = findViewById(R.id.tvWeight);
         tvRestTimer              = findViewById(R.id.tvRestTimer);
@@ -534,9 +542,7 @@ public class PoseAnalysisActivity extends AppCompatActivity {
      * 첫 클릭에서 버튼을 비활성화하고 "요약 준비 중..." 텍스트를 표시한 뒤
      * session_end 메시지를 서버로 전송한다. 중복 클릭은 무시된다.
      */
-    private void requestSessionEnd(
-            com.google.android.material.button.MaterialButton btnFinish,
-            com.google.android.material.button.MaterialButton btnViewResult) {
+    private void requestSessionEnd() {
         if (sessionEndRequested) return;
         if (!wsClient.isConnected()) {
             Toast.makeText(this, "서버에 연결되지 않았습니다.", Toast.LENGTH_SHORT).show();
@@ -560,6 +566,9 @@ public class PoseAnalysisActivity extends AppCompatActivity {
         // 카메라 토글
         findViewById(R.id.btnCameraToggle).setOnClickListener(v -> toggleCamera());
 
+        // TTS 토글
+        findViewById(R.id.btnTtsToggle).setOnClickListener(v -> toggleTts());
+
         // 카운트 초기화
         findViewById(R.id.btnReset).setOnClickListener(v ->
                 wsClient.sendReset(currentExercise));
@@ -578,13 +587,11 @@ public class PoseAnalysisActivity extends AppCompatActivity {
                 advanceToNextSet());
 
         // 운동 종료 / 결과 보기 — 공통 핸들러
-        com.google.android.material.button.MaterialButton btnFinish =
-                findViewById(R.id.btnFinish);
-        com.google.android.material.button.MaterialButton btnViewResult =
-                findViewById(R.id.btnViewResult);
+        btnFinish     = findViewById(R.id.btnFinish);
+        btnViewResult = findViewById(R.id.btnViewResult);
 
-        btnFinish.setOnClickListener(v -> requestSessionEnd(btnFinish, btnViewResult));
-        btnViewResult.setOnClickListener(v -> requestSessionEnd(btnFinish, btnViewResult));
+        btnFinish.setOnClickListener(v -> requestSessionEnd());
+        btnViewResult.setOnClickListener(v -> requestSessionEnd());
     }
 
     // ──────────────────── WebSocket 설정 ────────────────────────────────
@@ -628,6 +635,7 @@ public class PoseAnalysisActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     lastRepCount = result.count;
                     updatePostureUI(result);
+                    speakIfNeeded(result);
 
                     // 목표 횟수 달성 자동 감지 (정보가 있고, 아직 세트 완료 전일 때만)
                     if (!setCompleted && targetReps > 0 && result.count >= targetReps) {
@@ -638,10 +646,7 @@ public class PoseAnalysisActivity extends AppCompatActivity {
 
             @Override
             public void onResetOk(@Nullable String exercise) {
-                runOnUiThread(() -> {
-                    tvCount.setText("0");
-                    tvStage.setText("—");
-                });
+                runOnUiThread(() -> tvCount.setText("0"));
             }
 
             @Override
@@ -708,7 +713,6 @@ public class PoseAnalysisActivity extends AppCompatActivity {
         tvFeedback.setTextColor(isGood ? Color.parseColor("#FF44CC44") : Color.WHITE);
 
         tvCount.setText(String.valueOf(result.count));
-        tvStage.setText(result.stage != null ? result.stage : "—");
 
         if (result.repCompleted) triggerRepCompletedFeedback();
     }
@@ -742,6 +746,45 @@ public class PoseAnalysisActivity extends AppCompatActivity {
         intent.putExtra(SessionSummaryActivity.EXTRA_SUMMARY_JSON,
                 new Gson().toJson(summary));
         startActivity(intent);
+    }
+
+    // ──────────────────── TTS ───────────────────────────────────────────
+
+    private void setupTts() {
+        tts = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                tts.setLanguage(Locale.KOREAN);
+            } else {
+                Log.w(TAG, "TTS 초기화 실패: status=" + status);
+            }
+        });
+    }
+
+    /**
+     * issues 배열이 비어있지 않을 때만 feedback 첫 문구를 TTS로 발화한다.
+     * 같은 이슈는 3초 쿨다운 내 재발화를 막는다.
+     */
+    private void speakIfNeeded(PoseResult result) {
+        if (!ttsEnabled) return;
+        if (result.issues == null || result.issues.isEmpty()) return;
+        String issue = result.issues.get(0);
+        long now = System.currentTimeMillis();
+        Long last = lastSpokenMap.get(issue);
+        if (last != null && now - last < TTS_COOLDOWN_MS) return;
+        lastSpokenMap.put(issue, now);
+        String text = result.feedback != null
+                ? result.feedback.split(" \\| ")[0].trim() : "";
+        if (!text.isEmpty()) {
+            tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, issue);
+        }
+    }
+
+    private void toggleTts() {
+        ttsEnabled = !ttsEnabled;
+        if (!ttsEnabled) tts.stop();
+        com.google.android.material.button.MaterialButton btn =
+                findViewById(R.id.btnTtsToggle);
+        btn.setText(ttsEnabled ? "🔊 음성" : "🔇 음성");
     }
 
     // ──────────────────── 유틸 ──────────────────────────────────────────
@@ -887,10 +930,24 @@ public class PoseAnalysisActivity extends AppCompatActivity {
     // ──────────────────── 생명주기 ───────────────────────────────────────
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // 세션 요약 화면에서 돌아올 때 버튼 원래 상태로 복원
+        if (sessionEndRequested) {
+            sessionEndRequested = false;
+            btnFinish.setEnabled(true);
+            btnFinish.setText("운동 종료");
+            btnViewResult.setEnabled(true);
+            btnViewResult.setText("결과 보기");
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         cancelRestTimer();
         wsClient.disconnect();
         if (cameraExecutor != null) cameraExecutor.shutdown();
+        if (tts != null) { tts.stop(); tts.shutdown(); }
     }
 }
