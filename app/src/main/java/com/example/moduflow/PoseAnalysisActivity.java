@@ -774,9 +774,8 @@ public class PoseAnalysisActivity extends AppCompatActivity {
         lastSpokenMap.put(issue, now);
         String text = result.feedback != null
                 ? result.feedback.split(" \\| ")[0].trim() : "";
-        if (!text.isEmpty()) {
-            tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, issue);
-        }
+        if (text.isEmpty() || text.contains("준비 자세")) return;
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, issue);
     }
 
     private void toggleTts() {
