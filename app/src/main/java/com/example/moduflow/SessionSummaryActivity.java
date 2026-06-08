@@ -74,14 +74,15 @@ public class SessionSummaryActivity extends AppCompatActivity {
             tvTime.setText("시작: " + formatIso(summary.startTime));
         }
 
-        // AI 총평 헤드라인: aiSummary 있으면 그걸, 없으면 assessment
+        // AI 총평 섹션: aiSummary 있으면 그걸, 없으면 assessment
+        View layoutAiSection = findViewById(R.id.layoutAiSection);
         TextView tvAiHeadline = findViewById(R.id.tvAiHeadline);
         if (summary != null) {
             String headline = (summary.aiSummary != null && !summary.aiSummary.isEmpty())
                     ? summary.aiSummary : summary.assessment;
             if (headline != null && !headline.isEmpty()) {
                 tvAiHeadline.setText(headline);
-                tvAiHeadline.setVisibility(View.VISIBLE);
+                layoutAiSection.setVisibility(View.VISIBLE);
             }
         }
 
