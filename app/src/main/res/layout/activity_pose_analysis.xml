@@ -65,6 +65,7 @@
                 android:text="📷 끄기"
                 android:textColor="#FFAAAAAA"
                 android:textSize="14sp"
+                app:cornerRadius="8dp"
                 app:strokeColor="#FF666666" />
         </LinearLayout>
 
@@ -160,15 +161,6 @@
             android:textColor="#FFCCCCCC"
             android:textSize="14sp" />
 
-        <TextView
-            android:id="@+id/tvStage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="—"
-            android:textColor="#FF888888"
-            android:textSize="13sp" />
-
         <!-- 현재 운동 카운트 초기화 -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnReset"
@@ -181,7 +173,8 @@
             android:paddingEnd="6dp"
             android:text="초기화"
             android:textColor="#FF888888"
-            android:textSize="11sp" />
+            android:textSize="11sp"
+            app:cornerRadius="8dp" />
     </LinearLayout>
 
     <!-- 하단 오버레이: 자세 인디케이터 + 피드백 + 지표 + 버튼 -->
@@ -249,6 +242,7 @@
                 android:layout_marginEnd="6dp"
                 android:text="세트 종료"
                 android:textColor="#FFCCCCCC"
+                app:cornerRadius="8dp"
                 app:strokeColor="#FF888888" />
 
             <com.google.android.material.button.MaterialButton
@@ -260,6 +254,7 @@
                 android:layout_marginStart="6dp"
                 android:text="운동 종료"
                 android:textColor="@android:color/white"
+                app:cornerRadius="8dp"
                 app:strokeColor="@android:color/white" />
         </LinearLayout>
     </LinearLayout>
@@ -356,6 +351,7 @@
             android:paddingEnd="32dp"
             android:text="바로 시작하기 ▶"
             android:textColor="#FF44CCFF"
+            app:cornerRadius="8dp"
             app:strokeColor="#FF44CCFF" />
     </LinearLayout>
 
@@ -431,6 +427,7 @@
             android:paddingEnd="40dp"
             android:text="결과 보기"
             android:textColor="#FF44CCFF"
+            app:cornerRadius="8dp"
             app:strokeColor="#FF44CCFF" />
 
     </LinearLayout>
