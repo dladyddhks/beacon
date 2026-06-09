@@ -204,9 +204,16 @@ public class PoseAnalysisActivity extends AppCompatActivity {
         final List<String> presetExercises = resolvePresetExercises();
         Log.d(TAG, "presetExercises: " + presetExercises);
 
-        String userId = Settings.Secure.getString(
-                getContentResolver(), Settings.Secure.ANDROID_ID);
-        Log.d(TAG, "API 루틴 조회: userId=" + userId + ", dayOfWeek=" + dayOfWeek);
+        // 루틴은 "사용자 본인 데이터"이므로 계정 userId를 사용한다.
+        // (기기 ANDROID_ID로 조회하면, 한 기기에서 계정이 바뀌어도 기기 소유 계정의 루틴이 나옴)
+        // PWA가 setUserId로 전달한 계정 userId가 없을 때만 ANDROID_ID로 폴백한다.
+        String accountUserId = TokenManager.getInstance(this).getUserId();
+        String userId = (accountUserId != null && !accountUserId.isEmpty())
+                ? accountUserId
+                : Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+        Log.d(TAG, "API 루틴 조회: userId=" + userId
+                + " (account=" + (accountUserId != null && !accountUserId.isEmpty())
+                + "), dayOfWeek=" + dayOfWeek);
 
         ApiClient.getInstance(this).getRoutineService()
                 .getRoutines(userId, dayOfWeek)

@@ -22,6 +22,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
 
 /**
  * 운동 종료 후 세션 전체 요약을 표시하는 화면.
@@ -256,16 +257,51 @@ public class SessionSummaryActivity extends AppCompatActivity {
         return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
-    /** ISO 8601 → "MM월 DD일 HH:mm" (연도 제외) */
+    private static final TimeZone KST = TimeZone.getTimeZone("Asia/Seoul");
+    private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
+
+    /** ISO 8601 → 한국 시간(KST) 기준 "MM월 DD일 HH:mm" (연도 제외) */
     private String formatIso(String iso) {
-        try {
-            SimpleDateFormat in  = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault());
-            SimpleDateFormat out = new SimpleDateFormat("MM월 dd일 HH:mm",        Locale.getDefault());
-            Date date = in.parse(iso);
-            return date != null ? out.format(date) : iso;
-        } catch (ParseException e) {
-            return iso;
+        Date date = parseIso(iso);
+        if (date == null) return iso;
+        SimpleDateFormat out = new SimpleDateFormat("MM월 dd일 HH:mm", Locale.KOREA);
+        out.setTimeZone(KST); // 항상 한국 시간으로 표시
+        return out.format(date);
+    }
+
+    /**
+     * 서버 startTime(ISO 8601)을 절대 시각(Date)으로 파싱한다.
+     *   1) 오프셋(+09:00)·'Z'가 있으면 그 값을 그대로 사용해 절대 시각을 얻는다.
+     *   2) 존 표시가 없는 naive 형식은 서버가 UTC로 보낸다고 가정한다.
+     * 오프셋 포함 패턴을 먼저 시도해야 "+09:00" 같은 문자열을 UTC로 잘못 읽는 일을 막는다.
+     */
+    private Date parseIso(String iso) {
+        if (iso == null || iso.isEmpty()) return null;
+
+        // 1) 존 정보 포함 ('X'/'XXX'는 'Z'도 0 오프셋으로 인식)
+        String[] zoned = {
+                "yyyy-MM-dd'T'HH:mm:ssXXX",
+                "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+        };
+        for (String p : zoned) {
+            try {
+                return new SimpleDateFormat(p, Locale.US).parse(iso);
+            } catch (ParseException ignored) { /* 다음 패턴 시도 */ }
         }
+
+        // 2) 존 표시 없음 → UTC로 간주
+        String[] naive = {
+                "yyyy-MM-dd'T'HH:mm:ss",
+                "yyyy-MM-dd'T'HH:mm:ss.SSS",
+        };
+        for (String p : naive) {
+            try {
+                SimpleDateFormat f = new SimpleDateFormat(p, Locale.US);
+                f.setTimeZone(UTC);
+                return f.parse(iso);
+            } catch (ParseException ignored) { /* 다음 패턴 시도 */ }
+        }
+        return null;
     }
 
     private String exerciseName(String key) {

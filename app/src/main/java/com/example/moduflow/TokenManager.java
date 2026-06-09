@@ -14,6 +14,7 @@ public class TokenManager {
     private static final String PREF_NAME         = "auth_prefs";
     private static final String KEY_TOKEN          = "access_token";
     private static final String KEY_EXPIRY         = "token_expiry";
+    private static final String KEY_USER_ID        = "account_user_id";
     private static final long   TOKEN_VALIDITY_MS  = 55 * 60 * 1000L; // 55분
 
     private final SharedPreferences prefs;
@@ -38,6 +39,20 @@ public class TokenManager {
 
     public String getToken() {
         return prefs.getString(KEY_TOKEN, null);
+    }
+
+    /**
+     * 로그인 계정의 userId를 저장한다.
+     * PWA가 로그인 시 window.Android.setUserId(accountId)로 전달한다.
+     * 루틴 등 "사용자 본인 데이터" 조회에 기기 ANDROID_ID 대신 이 값을 사용한다.
+     */
+    public void saveUserId(String userId) {
+        prefs.edit().putString(KEY_USER_ID, userId).apply();
+    }
+
+    /** 저장된 계정 userId. 없으면 null. */
+    public String getUserId() {
+        return prefs.getString(KEY_USER_ID, null);
     }
 
     /** 토큰이 존재하고 아직 만료되지 않았으면 true. */

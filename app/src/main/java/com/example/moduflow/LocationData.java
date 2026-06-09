@@ -8,11 +8,13 @@ package com.example.moduflow;
  * 비콘 범위를 벗어났을 때 0을 전송한다.
  */
 public class LocationData {
-    private String userId; // 기기 고유 식별자 (ANDROID_ID)
-    private int zoneId;    // 현재 감지된 비콘 구역 ID, 0이면 구역 이탈
+    private String userId;  // 기기 고유 식별자 (ANDROID_ID)
+    private int    zoneId;  // 현재 감지된 비콘 구역 ID, 0이면 구역 이탈
+    private String gymName; // 헬스장 이름 (예: "ModuFlow")
 
-    public LocationData(String userId, int zoneId) {
-        this.userId = userId;
-        this.zoneId = zoneId;
+    public LocationData(String userId, int zoneId, String gymName) {
+        this.userId  = userId;
+        this.zoneId  = zoneId;
+        this.gymName = gymName;
     }
 }

@@ -20,4 +20,7 @@
     <color name="summary_tip_text">#FF666666</color>
     <color name="summary_more_link">#FF1976D2</color>
     <color name="summary_empty_text">#FF666666</color>
+
+    <!-- 런처 아이콘 adaptive 배경 (아이콘 그라데이션 평균색) -->
+    <color name="ic_launcher_background">#FF706CDF</color>
 </resources>

@@ -24,6 +24,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
 
+import com.google.gson.Gson;
+
 import org.altbeacon.beacon.Beacon;
 import org.altbeacon.beacon.BeaconConsumer;
 import org.altbeacon.beacon.BeaconManager;
@@ -35,6 +37,8 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -62,6 +66,15 @@ public class PwaActivity extends AppCompatActivity implements BeaconConsumer {
 
     // ── WebView ──────────────────────────────────────────────────────────
     private WebView webView;
+
+    // ── 비콘 자동출석 연동 ────────────────────────────────────────────────
+    private static final String GYM_NAME                 = "ModuFlow";
+    private static final long   BEACON_EVENT_DEBOUNCE_MS = 7_000L; // 동일 비콘 재트리거 방지 (5~10초 권장)
+    /** zoneId → 마지막 이벤트 전송 시각. 동일 비콘 과도 트리거를 디바운스한다. */
+    private final Map<Integer, Long> lastBeaconEventTime = new HashMap<>();
+    private final Gson      gson         = new Gson();
+    /** WebView(PWA) 활성 여부. true=포그라운드(WebView로 이벤트 전달), false=백그라운드(직접 API 호출). */
+    private volatile boolean isForeground = false;
 
     // ────────────────────────────────────────────────────────────────────
 
@@ -122,6 +135,31 @@ public class PwaActivity extends AppCompatActivity implements BeaconConsumer {
         });
 
         webView.addJavascriptInterface(new Object() {
+            /**
+             * 기기 고유 식별자(ANDROID_ID)를 반환한다.
+             * PWA 로그인 화면에서 window.Android.getDeviceId()로 호출해
+             * 로그인 API의 userId로 전송 → 회원 계정과 기기를 연결한다.
+             */
+            @JavascriptInterface
+            public String getDeviceId() {
+                return getAndroidId();
+            }
+
+            /**
+             * 로그인 계정의 userId를 네이티브에 저장한다.
+             * 루틴 등 "사용자 본인 데이터" 조회 시 기기 ANDROID_ID가 아니라
+             * 이 계정 userId를 사용해, 한 기기에서 계정이 바뀌어도 올바른 계정 데이터를 가져온다.
+             */
+            @JavascriptInterface
+            public void setUserId(String userId) {
+                if (userId == null || userId.isEmpty()) {
+                    Log.w(TAG, "setUserId: 빈 userId 무시");
+                    return;
+                }
+                TokenManager.getInstance(PwaActivity.this).saveUserId(userId);
+                Log.d(TAG, "PWA로부터 계정 userId 저장 완료");
+            }
+
             @JavascriptInterface
             public void setAuthToken(String token) {
                 if (token == null || token.isEmpty()) {
@@ -240,12 +278,14 @@ public class PwaActivity extends AppCompatActivity implements BeaconConsumer {
                 if (shouldSwitch) {
                     currentZone         = newMinor;
                     currentZoneDistance = newDistance;
-                    sendLocationToServer(newMinor);
+                    onBeaconDetected(newMinor);
                 }
             } else {
                 if (currentZone != -1) {
                     currentZone         = -1;
                     currentZoneDistance = Double.MAX_VALUE;
+                    // 이탈(zoneId=0)은 출석 트리거(CustomEvent)로 보내지 않는다.
+                    // 단, 혼잡도/구역 상태 반영을 위해 위치 업데이트는 그대로 전송한다.
                     sendLocationToServer(0);
                 }
             }
@@ -259,13 +299,59 @@ public class PwaActivity extends AppCompatActivity implements BeaconConsumer {
         }
     }
 
+    // ──────────────────── 비콘 자동출석 ──────────────────────────────────
+
+    /** 기기 고유 식별자(ANDROID_ID). 로그인/위치/비콘 이벤트의 userId로 사용한다. */
+    @SuppressLint("HardwareIds")
+    private String getAndroidId() {
+        return Settings.Secure.getString(
+                getContentResolver(), Settings.Secure.ANDROID_ID);
+    }
+
+    /**
+     * 유효 비콘(53626/53630/56376) 감지 시 호출.
+     *   - 포그라운드(WebView 활성): moduflow:native-event CustomEvent를 PWA로 전달
+     *   - 백그라운드: POST /api/v1/update-location 직접 호출
+     * 동일 비콘은 BEACON_EVENT_DEBOUNCE_MS 내 재트리거를 디바운스한다.
+     */
+    private void onBeaconDetected(int zoneId) {
+        if (zoneId == 0) return; // 이탈은 출석 트리거가 아님
+
+        long now  = System.currentTimeMillis();
+        Long last = lastBeaconEventTime.get(zoneId);
+        if (last != null && now - last < BEACON_EVENT_DEBOUNCE_MS) {
+            Log.d(TAG, "비콘 이벤트 디바운스: zoneId=" + zoneId);
+            return;
+        }
+        lastBeaconEventTime.put(zoneId, now);
+
+        if (isForeground) {
+            dispatchBeaconEvent(new BeaconEvent(getAndroidId(), zoneId, GYM_NAME, nowIso8601()));
+        } else {
+            Log.d(TAG, "백그라운드 — update-location 직접 호출: zoneId=" + zoneId);
+            sendLocationToServer(zoneId);
+        }
+    }
+
+    /** 비콘 이벤트를 WebView로 전달. JSON 직렬화(Gson)로 detail을 안전하게 escape한다. */
+    private void dispatchBeaconEvent(BeaconEvent event) {
+        String payloadJson = gson.toJson(event);
+        String script =
+                "window.dispatchEvent(new CustomEvent('moduflow:native-event', { detail: "
+                        + payloadJson + " }));";
+        webView.post(() -> webView.evaluateJavascript(script, null));
+        Log.d(TAG, "비콘 이벤트 dispatch: " + payloadJson);
+    }
+
+    /** 현재 시각을 ISO-8601(오프셋 포함, 예: 2026-06-09T16:00:00+09:00)로 반환한다. */
+    private String nowIso8601() {
+        return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).format(new Date());
+    }
+
     // ──────────────────── 서버 전송 ──────────────────────────────────────
 
-    @SuppressLint("HardwareIds")
     private void sendLocationToServer(int zoneId) {
-        String androidId = Settings.Secure.getString(
-                getContentResolver(), Settings.Secure.ANDROID_ID);
-        LocationData data = new LocationData(androidId, zoneId);
+        LocationData data = new LocationData(getAndroidId(), zoneId, GYM_NAME);
 
         ApiClient.getInstance(this)
                 .getLocationService()
@@ -289,6 +375,18 @@ public class PwaActivity extends AppCompatActivity implements BeaconConsumer {
     }
 
     // ────────────────────────────────────────────────────────────────────
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        isForeground = true;  // WebView 활성 — 비콘 감지를 CustomEvent로 전달
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        isForeground = false; // 백그라운드 — 비콘 감지를 update-location 직접 호출로 전환
+    }
 
     @Override
     protected void onDestroy() {
