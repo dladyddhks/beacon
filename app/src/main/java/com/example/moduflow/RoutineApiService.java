@@ -17,7 +17,6 @@ public interface RoutineApiService {
 
     @GET("/api/v1/routines")
     Call<Map<String, JsonElement>> getRoutines(
-            @Query("userId") String userId,
             @Query("dayOfWeek") String dayOfWeek
     );
 }

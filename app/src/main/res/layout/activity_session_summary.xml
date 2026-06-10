@@ -55,7 +55,7 @@
             android:layout_height="wrap_content"
             android:text="AI 트레이너의 피드백"
             android:textColor="@color/summary_ai_text"
-            android:textSize="11sp"
+            android:textSize="16sp"
             android:textStyle="bold"
             android:alpha="0.7"
             android:layout_marginBottom="6dp" />

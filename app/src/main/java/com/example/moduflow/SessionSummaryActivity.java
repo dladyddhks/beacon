@@ -202,7 +202,7 @@ public class SessionSummaryActivity extends AppCompatActivity {
         row.setLayoutParams(rp);
 
         row.addView(makeText(
-                "•  " + detail.message + "  (" + detail.count + "회)",
+                "•  " + detail.message,
                 14, color(R.color.summary_issue_text)));
 
         if (detail.tip != null && !detail.tip.isEmpty()) {
@@ -232,7 +232,7 @@ public class SessionSummaryActivity extends AppCompatActivity {
         for (int i = 0; i < top; i++) {
             Map.Entry<String, Integer> e = sorted.get(i);
             TextView tv = makeText(
-                    "•  " + issueName(e.getKey()) + "  (" + e.getValue() + "회)",
+                    "•  " + issueName(e.getKey()),
                     14, color(R.color.summary_issue_text));
             tv.setPadding(0, dp(2), 0, 0);
             parent.addView(tv);

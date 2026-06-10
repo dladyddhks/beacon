@@ -4,7 +4,6 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
-import android.provider.Settings;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
@@ -204,19 +203,12 @@ public class PoseAnalysisActivity extends AppCompatActivity {
         final List<String> presetExercises = resolvePresetExercises();
         Log.d(TAG, "presetExercises: " + presetExercises);
 
-        // 루틴은 "사용자 본인 데이터"이므로 계정 userId를 사용한다.
-        // (기기 ANDROID_ID로 조회하면, 한 기기에서 계정이 바뀌어도 기기 소유 계정의 루틴이 나옴)
-        // PWA가 setUserId로 전달한 계정 userId가 없을 때만 ANDROID_ID로 폴백한다.
-        String accountUserId = TokenManager.getInstance(this).getUserId();
-        String userId = (accountUserId != null && !accountUserId.isEmpty())
-                ? accountUserId
-                : Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
-        Log.d(TAG, "API 루틴 조회: userId=" + userId
-                + " (account=" + (accountUserId != null && !accountUserId.isEmpty())
-                + "), dayOfWeek=" + dayOfWeek);
+        // 루틴은 "사용자 본인 데이터"이며, 백엔드가 JWT 인증 사용자 기준으로 조회한다.
+        // userId/ANDROID_ID는 더 이상 전달하지 않는다. (JWT는 ApiClient 인터셉터가 자동 첨부)
+        Log.d(TAG, "API 루틴 조회: JWT 기준, dayOfWeek=" + dayOfWeek);
 
         ApiClient.getInstance(this).getRoutineService()
-                .getRoutines(userId, dayOfWeek)
+                .getRoutines(dayOfWeek)
                 .enqueue(new Callback<Map<String, JsonElement>>() {
                     @Override
                     public void onResponse(@NonNull Call<Map<String, JsonElement>> call,
@@ -779,18 +771,18 @@ public class PoseAnalysisActivity extends AppCompatActivity {
      * 같은 이슈는 3초 쿨다운 내 재발화를 막는다.
      */
     private void speakIfNeeded(PoseResult result) {
-        if (!ttsEnabled) return;
-        if (result.issues == null || result.issues.isEmpty()) return;
+        if (!ttsEnabled) return;    // 음성 토글 OFF면 중단
+        if (result.issues == null || result.issues.isEmpty()) return;   // 교정할 이슈 있을 때만
         String issue = result.issues.get(0);
         long now = System.currentTimeMillis();
         Long last = lastSpokenMap.get(issue);
-        if (last != null && now - last < TTS_COOLDOWN_MS) return;
+        if (last != null && now - last < TTS_COOLDOWN_MS) return;   // 같은 이슈 3초 쿨다운
         String text = result.feedback != null
-                ? result.feedback.split(" \\| ")[0].trim() : "";
+                ? result.feedback.split(" \\| ")[0].trim() : "";    // 피드백 첫 문구만
         // 위치 안내 메시지는 발화 스킵 — lastSpokenMap에도 기록하지 않아 쿨다운 오염 방지
-        if (text.isEmpty() || isPositioningMessage(text)) return;
+        if (text.isEmpty() || isPositioningMessage(text)) return;   // 위치안내 문구는 제외
         lastSpokenMap.put(issue, now);
-        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, issue);
+        tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, issue); // 직전 발화 끊고 즉시 발화
     }
 
     /** AI 서버 운동 식별자를 현행 규격(소문자 붙여쓰기)으로 정규화한다. */
