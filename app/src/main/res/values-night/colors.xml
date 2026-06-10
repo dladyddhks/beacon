@@ -8,6 +8,7 @@
     <color name="summary_subtitle_text">#FF888888</color>
     <color name="summary_ai_bg">#FF1A2A1A</color>
     <color name="summary_ai_text">#FF88DD88</color>
+    <color name="summary_ai_label">#FFB9F6CA</color>
     <color name="summary_exercise_title">#FFFFFFFF</color>
     <color name="summary_metric_text">#FF888888</color>
     <color name="summary_assessment_text">#FFDDDDDD</color>

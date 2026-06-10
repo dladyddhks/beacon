@@ -11,6 +11,7 @@
     <color name="summary_subtitle_text">#FF666666</color>
     <color name="summary_ai_bg">#FFE8F5E9</color>
     <color name="summary_ai_text">#FF2E7D32</color>
+    <color name="summary_ai_label">#FF1B5E20</color>
     <color name="summary_exercise_title">#FF000000</color>
     <color name="summary_metric_text">#FF666666</color>
     <color name="summary_assessment_text">#FF333333</color>
