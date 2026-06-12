@@ -132,6 +132,7 @@ public class PoseAnalysisActivity extends AppCompatActivity {
     private boolean sessionEndRequested = false; // 운동 종료 요청 중복 방지
 
     private CountDownTimer restTimer = null;
+    private volatile boolean isResting = false; // 휴식 타이머 중에는 자세 분석(프레임 전송) 중단
 
     // ── TTS ──────────────────────────────────────────────────────────────
     private TextToSpeech              tts;
@@ -457,6 +458,8 @@ public class PoseAnalysisActivity extends AppCompatActivity {
     }
 
     private void startRestTimer() {
+        isResting = true; // 휴식 중에는 프레임 전송(자세 분석) 중단
+
         // 다음 세트 정보 미리 계산
         int nextSet = currentSet + 1;
         String nextSetText;
@@ -490,6 +493,7 @@ public class PoseAnalysisActivity extends AppCompatActivity {
 
     /** 휴식 타이머를 취소하고 오버레이를 숨긴다. */
     private void cancelRestTimer() {
+        isResting = false; // 휴식 종료 → 자세 분석 재개
         if (restTimer != null) {
             restTimer.cancel();
             restTimer = null;
@@ -878,6 +882,7 @@ public class PoseAnalysisActivity extends AppCompatActivity {
                 analysis.setAnalyzer(cameraExecutor, image -> {
                     long now = System.currentTimeMillis();
                     if (!isProcessing.get()
+                            && !isResting
                             && wsClient.isConnected()
                             && (now - lastFrameTime) > MIN_FRAME_INTERVAL_MS) {
 
