@@ -21,6 +21,7 @@ import android.webkit.WebViewClient;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.browser.customtabs.CustomTabsIntent;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
 
@@ -67,6 +68,14 @@ public class PwaActivity extends AppCompatActivity implements BeaconConsumer {
     // ── WebView ──────────────────────────────────────────────────────────
     private WebView webView;
 
+    // ── 구글 OAuth (Custom Tabs + 딥링크 콜백) ────────────────────────────
+    /** WebView가 가로채 Custom Tabs로 열어야 하는 OAuth 시작 경로(WebView 내부 로그인은 구글이 차단). */
+    private static final String GOOGLE_OAUTH_PATH = "/oauth2/authorization/google";
+    /** PWA 페이지 로드 완료 여부. 콜백 토큰을 web으로 dispatch할 시점 판단에 사용. */
+    private volatile boolean pageLoaded = false;
+    /** 페이지 로드 전에 도착한 인증 토큰을 보관했다가 로드 완료 후 web으로 전달. */
+    private String pendingAuthToken = null;
+
     // ── 비콘 자동출석 연동 ────────────────────────────────────────────────
     private static final String GYM_NAME                 = "ModuFlow";
     private static final long   BEACON_EVENT_DEBOUNCE_MS = 7_000L; // 동일 비콘 재트리거 방지 (5~10초 권장)
@@ -91,6 +100,17 @@ public class PwaActivity extends AppCompatActivity implements BeaconConsumer {
         setupBeacon();
 
         webView.loadUrl(Config.PWA_URL);
+
+        // 콜드 스타트로 OAuth 콜백 딥링크를 통해 진입한 경우 처리
+        handleAuthDeepLink(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        // Custom Tabs 로그인 완료 후 moduflow://oauth/callback 으로 복귀한 경우
+        handleAuthDeepLink(intent);
     }
 
     // ──────────────────── WebView 설정 ───────────────────────────────────
@@ -108,6 +128,14 @@ public class PwaActivity extends AppCompatActivity implements BeaconConsumer {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
+
+                // 구글 OAuth는 WebView 내부 로그인을 정책으로 차단(403)하므로
+                // WebView로 열지 않고 Chrome Custom Tabs(외부 브라우저 탭)로 연다.
+                if (isGoogleOAuthUrl(uri)) {
+                    openInCustomTabs(uri);
+                    return true;
+                }
+
                 if ("moduflow".equals(uri.getScheme())) {
                     try {
                         startActivity(new Intent(Intent.ACTION_VIEW, uri));
@@ -117,6 +145,13 @@ public class PwaActivity extends AppCompatActivity implements BeaconConsumer {
                     return true;
                 }
                 return false;
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                pageLoaded = true;
+                flushPendingAuthToWeb(); // 콜백이 페이지 로드보다 먼저 왔다면 지금 전달
             }
         });
 
@@ -134,7 +169,7 @@ public class PwaActivity extends AppCompatActivity implements BeaconConsumer {
             }
         });
 
-        webView.addJavascriptInterface(new Object() {
+        Object jsBridge = new Object() {
             /**
              * 기기 고유 식별자(ANDROID_ID)를 반환한다.
              * PWA 로그인 화면에서 window.Android.getDeviceId()로 호출해
@@ -178,7 +213,22 @@ public class PwaActivity extends AppCompatActivity implements BeaconConsumer {
                     startActivity(intent);
                 });
             }
-        }, "Android");
+
+            /**
+             * 로그아웃 시 네이티브에 저장된 JWT를 삭제한다.
+             * PWA에서 로그아웃 처리 후 window.Android.clearAuthToken()으로 호출한다.
+             */
+            @JavascriptInterface
+            public void clearAuthToken() {
+                TokenManager.getInstance(PwaActivity.this).clearToken();
+                Log.d(TAG, "PWA 로그아웃 — 네이티브 JWT 삭제");
+            }
+        };
+
+        // 동일 브리지를 호환 이름 3개로 노출 (Android / ModuFlowAndroid / AndroidBridge)
+        webView.addJavascriptInterface(jsBridge, "Android");
+        webView.addJavascriptInterface(jsBridge, "ModuFlowAndroid");
+        webView.addJavascriptInterface(jsBridge, "AndroidBridge");
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
@@ -187,6 +237,77 @@ public class PwaActivity extends AppCompatActivity implements BeaconConsumer {
                 else finish();
             }
         });
+    }
+
+    // ──────────────────── 구글 OAuth (Custom Tabs + 딥링크) ───────────────
+
+    /** 구글 OAuth 시작 URL(백엔드 /oauth2/authorization/google)인지 판별. */
+    private boolean isGoogleOAuthUrl(Uri uri) {
+        if (uri == null || uri.getPath() == null) return false;
+        return uri.getPath().startsWith(GOOGLE_OAUTH_PATH);
+    }
+
+    /** 구글 OAuth URL을 Chrome Custom Tabs로 연다(WebView 내부 로그인은 구글이 403으로 차단). */
+    private void openInCustomTabs(Uri uri) {
+        try {
+            CustomTabsIntent intent = new CustomTabsIntent.Builder()
+                    .setShowTitle(true)
+                    .build();
+            intent.launchUrl(this, uri);
+            Log.d(TAG, "구글 OAuth Custom Tabs 오픈: " + uri);
+        } catch (ActivityNotFoundException e) {
+            // Custom Tabs 지원 브라우저가 없으면 외부 브라우저로 폴백
+            Log.w(TAG, "Custom Tabs 미지원 — 외부 브라우저 폴백");
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, uri));
+            } catch (ActivityNotFoundException ex) {
+                Log.e(TAG, "OAuth URL 열기 실패: " + ex.getMessage());
+            }
+        }
+    }
+
+    /**
+     * OAuth 콜백 딥링크(moduflow://oauth/callback?accessToken=<JWT>)를 처리한다.
+     * 1) accessToken 추출 → 2) 네이티브에 저장 → 3) WebView(PWA)로 전달.
+     */
+    private void handleAuthDeepLink(Intent intent) {
+        if (intent == null) return;
+        Uri data = intent.getData();
+        if (data == null) return;
+        if (!"moduflow".equals(data.getScheme()) || !"oauth".equals(data.getHost())) return;
+
+        String token = data.getQueryParameter("accessToken");
+        if (token == null || token.isEmpty()) {
+            Log.w(TAG, "OAuth 콜백 — accessToken 없음: " + data);
+            return;
+        }
+
+        TokenManager.getInstance(this).saveToken(token);
+        Log.d(TAG, "OAuth 콜백 — JWT 저장 완료");
+
+        pendingAuthToken = token;
+        flushPendingAuthToWeb();
+    }
+
+    /**
+     * 보류 중인 인증 토큰을 web(PWA)으로 전달한다.
+     * 페이지 로드 완료 전이면 보류해 두었다가 onPageFinished에서 다시 호출된다.
+     */
+    private void flushPendingAuthToWeb() {
+        if (pendingAuthToken == null || !pageLoaded) return;
+
+        Map<String, String> detail = new HashMap<>();
+        detail.put("type", "auth");
+        detail.put("accessToken", pendingAuthToken);
+        String detailJson = gson.toJson(detail);
+
+        String script =
+                "window.dispatchEvent(new CustomEvent('moduflow:native-event', { detail: "
+                        + detailJson + " }));";
+        webView.post(() -> webView.evaluateJavascript(script, null));
+        Log.d(TAG, "OAuth 토큰 web 전달(moduflow:native-event/auth)");
+
+        pendingAuthToken = null;
     }
 
     // ──────────────────── 비콘 설정 ──────────────────────────────────────

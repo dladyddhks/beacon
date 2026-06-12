@@ -25,10 +25,23 @@
         
         <activity
             android:name=".PwaActivity"
+            android:launchMode="singleTask"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- 구글 OAuth 콜백 딥링크: moduflow://oauth/callback?accessToken=<JWT>
+                 Custom Tabs에서 로그인 완료 후 백엔드가 이 스킴으로 리다이렉트하면
+                 OS가 앱(PwaActivity)으로 복귀시킨다. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="moduflow"
+                    android:host="oauth"
+                    android:pathPrefix="/callback" />
             </intent-filter>
         </activity>
 
